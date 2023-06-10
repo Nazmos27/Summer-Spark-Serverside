@@ -10,6 +10,23 @@ require('dotenv').config()
 app.use(cors())
 app.use(express.json())
 
+const verifyJWT = (req,res,next) => {
+    const authorization = req.headers.authorization
+    if(!authorization){
+        return res.status(401).send({error : true,message:"Unathorized accsess"})
+    }
+    //if authorization work perfectly,their will be a token which will come in "bearer token" form
+    const token = authorization.split(' ')[1]
+
+    jwt.verify(token,process.env.ACCESS_TOKEN , (err,decodded) => {
+        if(err){
+            return res.status(401).send({error:true,message:'unauthorized access'})
+        }
+        req.decodded = decodded;
+        next()
+    })
+}
+
 
 app.get('/',(req,res) => {
     res.send("Sever is Running")
@@ -36,6 +53,8 @@ async function run() {
     await client.connect();
 
     const userCollection = client.db('summerDB').collection('users')
+    const classCollection = client.db('summerDB').collection('allClasses')
+    const instructorCollection = client.db('summerDB').collection('allInstructors')
 
 
 
@@ -78,6 +97,18 @@ app.patch('/users/admin/:id', async(req,res) => {
         },
     }
     const result = await userCollection.updateOne(filter,updateDoc)
+    res.send(result)
+})
+
+
+//Data fetching related API
+
+app.get('/allClasses',async(req,res) => {
+    const result = await classCollection.find().toArray()
+    res.send(result)
+})
+app.get('allInstructors',async(req,res) => {
+    const result = await instructorCollection.find().toArray()
     res.send(result)
 })
     
