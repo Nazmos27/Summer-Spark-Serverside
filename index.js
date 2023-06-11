@@ -97,7 +97,7 @@ async function run() {
             
             const query = {email:email}
             const user = await userCollection.findOne(query)
-            const result = {role:user?.role === 'admin'}
+            const result = {role: user?.role}
             res.send(result)
         })
 
@@ -120,6 +120,17 @@ async function run() {
             const updateDoc = {
                 $set: {
                     role: "admin"
+                },
+            }
+            const result = await userCollection.updateOne(filter, updateDoc)
+            res.send(result)
+        })
+        app.patch('/users/instructor/:id', async (req, res) => {
+            const id = req.params.id
+            const filter = { _id: new ObjectId(id) }
+            const updateDoc = {
+                $set: {
+                    role: "instructor"
                 },
             }
             const result = await userCollection.updateOne(filter, updateDoc)
