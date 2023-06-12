@@ -2,6 +2,7 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
 const port = process.env.PORT || 5000
 require('dotenv').config()
 // console.log(process.env.USER_NAME);
@@ -71,7 +72,10 @@ async function run() {
             const query = { email: email }
             const user = await userCollection.findOne(query)
             if (user?.role !== 'admin') {
-                return res.status(403).send({ error: true, message: "Forbidden Access" })
+                // return res.status(403).send({ error: true, message: "Forbidden Access" })
+                //slightly modified to get instructor data from all user data
+                const result = await userCollection.find({role: "instructor"}).toArray()
+                return res.send(result)
             }
             next()
         }
@@ -90,14 +94,22 @@ async function run() {
         //user related API
 
 
-        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
+        app.get('/users', verifyJWT,verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray()
             res.send(result)
         })
+        // app.get('/users/instructors',verifyJWT,async(req,res) => {
+        //     const role = req.query
+        //     console.log(role);
+        //     const query = {role:role}
+        //     const result = await userCollection.find(query).toArray()
+        //     console.log(result);
+        //     res.send(result)
+        // })
 
         app.get('/users/admin/:email', async (req, res) => {
             const email = req.params.email
-            console.log('email geting ', email);
+            // console.log('email geting ', email);
             // if(email !== req.decodded.email){
             //     res.send({admin:false})
             // }
@@ -198,7 +210,19 @@ async function run() {
 
 
 
-
+        //create patment intent
+        app.post('create-payment-intent' , async(req,res) => {
+            const { price } = req.body;
+            const amount = price*100
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount:amount,
+                currency:'usd',
+                payment_method_types : ['card']
+            })
+            res.send({
+                cleintSecret: paymentIntent.client_secret
+            })
+        })
 
 
 
