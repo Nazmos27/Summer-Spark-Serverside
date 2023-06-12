@@ -6,6 +6,12 @@ const port = process.env.PORT || 5000
 require('dotenv').config()
 // console.log(process.env.USER_NAME);
 
+
+/**
+ * ToDo : organize this index.js file 
+ */
+
+
 // midleware
 app.use(cors())
 app.use(express.json())
@@ -55,16 +61,17 @@ async function run() {
         const userCollection = client.db('summerDB').collection('users')
         const classCollection = client.db('summerDB').collection('allClasses')
         const instructorCollection = client.db('summerDB').collection('allInstructors')
+        const selectedClassCollection = client.db('summerDB').collection('selectedClasses')
 
 
         // Admin check middleware
-        
-        const verifyAdmin = async(req,res,next) => {
+
+        const verifyAdmin = async (req, res, next) => {
             const email = req.decodded.email
-            const query = {email : email}
+            const query = { email: email }
             const user = await userCollection.findOne(query)
-            if(user?.role !== 'admin'){
-                return res.status(403).send({error:true,message:"Forbidden Access"})
+            if (user?.role !== 'admin') {
+                return res.status(403).send({ error: true, message: "Forbidden Access" })
             }
             next()
         }
@@ -83,21 +90,21 @@ async function run() {
         //user related API
 
 
-        app.get('/users',verifyJWT, verifyAdmin , async (req, res) => {
+        app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray()
             res.send(result)
         })
 
-        app.get('/users/admin/:email', async(req,res) => {
+        app.get('/users/admin/:email', async (req, res) => {
             const email = req.params.email
-            console.log('email geting ',email);
+            console.log('email geting ', email);
             // if(email !== req.decodded.email){
             //     res.send({admin:false})
             // }
-            
-            const query = {email:email}
+
+            const query = { email: email }
             const user = await userCollection.findOne(query)
-            const result = {role: user?.role}
+            const result = { role: user?.role }
             res.send(result)
         })
 
@@ -145,8 +152,7 @@ async function run() {
             res.send(result)
         })
 
-
-        app.get('/myClasses',verifyJWT,async(req,res) => {
+        app.get('/myClasses', verifyJWT, async (req, res) => {
             let query = {}
             const email = req.query.email
             if (email) {
@@ -155,20 +161,40 @@ async function run() {
                 if (email !== decoddedEmail) {
                     return res.status(403).send({ error: true, message: 'Forbidden Access' })
                 }
+                const result = await classCollection.find(query).toArray()
+                res.send(result)
             }
-            const result = await classCollection.find(query).toArray()
-            res.send(result)
+
         })
-
-
 
         app.get('/allInstructors', async (req, res) => {
             const result = await instructorCollection.find().toArray()
             res.send(result)
         })
-        // app.get('/myClasses',async(req,res) => {
 
-        // })
+        app.get('/selectedClasses', async (req, res) => {
+            const email = req.query.email
+            const query = { select_by: email }
+            const result = await selectedClassCollection.find(query).toArray()
+            res.send(result)
+
+        })
+
+        //Data Storing/Updating related API
+
+        app.post('/selectedClasses', async (req, res) => {
+            const selectedClass = req.body
+            const result = await selectedClassCollection.insertOne(selectedClass)
+            res.send(result)
+
+        })
+
+        app.post('/allClasses', async (req, res) => {
+            const classData = req.body
+            const result = await classCollection.insertOne(classData)
+            res.send(result)
+        })
+
 
 
 
