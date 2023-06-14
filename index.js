@@ -2,9 +2,12 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const jwt = require('jsonwebtoken')
-const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
-const port = process.env.PORT || 5000
 require('dotenv').config()
+const stripe = require('stripe')(process.env.PAYMENT_SECRET_KEY)
+
+const port = process.env.PORT || 5000
+
+// console.log('key', process.env.PAYMENT_SECRET_KEY)
 // console.log(process.env.USER_NAME);
 
 
@@ -63,6 +66,7 @@ async function run() {
         const classCollection = client.db('summerDB').collection('allClasses')
         const instructorCollection = client.db('summerDB').collection('allInstructors')
         const selectedClassCollection = client.db('summerDB').collection('selectedClasses')
+        const paymentCollection = client.db('summerDB').collection('payments')
 
 
         // Admin check middleware
@@ -191,11 +195,22 @@ async function run() {
             res.send(result)
 
         })
+        app.get('/selectedClasses/:id',async(req,res) => {
+            const id = req.params.id
+            const query = {_id : new ObjectId(id)}
+            const result = await selectedClassCollection.findOne(query)
+            res.send(result)
+        })
 
         //Data Storing/Updating related API
 
         app.post('/selectedClasses', async (req, res) => {
             const selectedClass = req.body
+            const query = {name : selectedClass?.name , select_by: selectedClass.select_by }
+            const existAlready = await selectedClassCollection.findOne(query)
+            if(existAlready){
+                return res.send({message : 'already selected'})
+            }
             const result = await selectedClassCollection.insertOne(selectedClass)
             res.send(result)
 
@@ -211,7 +226,7 @@ async function run() {
 
 
         //create patment intent
-        app.post('create-payment-intent' , async(req,res) => {
+        app.post('/create-payment-intent' , async(req,res) => {
             const { price } = req.body;
             const amount = price*100
             const paymentIntent = await stripe.paymentIntents.create({
@@ -220,8 +235,14 @@ async function run() {
                 payment_method_types : ['card']
             })
             res.send({
-                cleintSecret: paymentIntent.client_secret
+                clientSecret: paymentIntent.client_secret
             })
+        })
+
+        app.post('/payments',async(req,res) => {
+            const paymentInfo = req.body;
+            const result = await paymentCollection.insertOne(paymentInfo)
+            res.send(result)
         })
 
 
